@@ -1,6 +1,8 @@
 package main
 
 import (
+	"sync"
+
 	"github.com/gomodule/redigo/redis"
 	rg "github.com/redislabs/redisgraph-go"
 )
@@ -10,30 +12,42 @@ type Node struct {
 	Marks   map[string]interface{}
 }
 
-func NodeMake() (*Node, *Node) {
-	m1 := make(map[string]interface{})
-	m1["semOne"] = 93
-	m1["semTwo"] = 95
-	node1 := Node{
-		Subject: "english",
-		Marks:   m1,
+var wg sync.WaitGroup
+var e *Node
+var m *Node
+
+func NodeMake(in string) {
+	if in == "e" {
+		m1 := map[string]interface{}{
+			"semOne": 93,
+			"semTwo": 95,
+		}
+		e = &Node{
+			Subject: "english",
+			Marks:   m1,
+		}
+	} else {
+		m2 := map[string]interface{}{
+			"semOne": 91,
+			"semTwo": 96,
+		}
+		m = &Node{
+			Subject: "mathematics",
+			Marks:   m2,
+		}
 	}
-	m2 := make(map[string]interface{})
-	m2["semOne"] = 91
-	m2["semTwo"] = 96
-	node2 := Node{
-		Subject: "mathematics",
-		Marks:   m2,
-	}
-	return &node1, &node2
+	wg.Done()
 }
 
 func main() {
 	conn, _ := redis.Dial("tcp", "0.0.0.0:6379")
 	defer conn.Close()
-	graph := rg.GraphNew("classTwo", conn)
+	graph := rg.GraphNew("classConc", conn)
 
-	e, m := NodeMake()
+	wg.Add(2)
+	go NodeMake("e")
+	go NodeMake("")
+	wg.Wait()
 	eng := rg.Node{
 		Label:      e.Subject,
 		Properties: e.Marks,
@@ -45,6 +59,7 @@ func main() {
 		Properties: m.Marks,
 	}
 	graph.AddNode(&math)
+	wg.Wait()
 
 	edge := rg.Edge{
 		Source:      &eng,
@@ -62,4 +77,5 @@ func main() {
 	       RETURN e.semOne, e.semTwo, p.success, m.semOne, m.semTwo`
 	rs, _ := graph.Query(query)
 	rs.PrettyPrint()
+	wg.Wait()
 }
