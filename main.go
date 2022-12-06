@@ -59,7 +59,6 @@ func main() {
 		Properties: m.Marks,
 	}
 	graph.AddNode(&math)
-	wg.Wait()
 
 	edge := rg.Edge{
 		Source:      &eng,
@@ -77,5 +76,4 @@ func main() {
 	       RETURN e.semOne, e.semTwo, p.success, m.semOne, m.semTwo`
 	rs, _ := graph.Query(query)
 	rs.PrettyPrint()
-	wg.Wait()
 }
